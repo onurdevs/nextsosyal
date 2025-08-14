@@ -81,13 +81,26 @@ class ApplicationController < ActionController::Base
       end
 
       format.json do
-        if !current_user.confirmed?
-          render json: { error: 'Your login is missing a confirmed e-mail address' }, status: 403
-        elsif !current_user.approved?
-          render json: { error: 'Your login is currently pending approval' }, status: 403
-        elsif !current_user.functional?
-          render json: { error: 'Your login is currently disabled' }, status: 403
-        end
+        errors = {
+          unconfirmed: {
+            condition: -> { !current_user.confirmed? },
+            message: 'Your login is missing a confirmed e-mail address',
+            status: 403
+          },
+          unapproved: {
+            condition: -> { !current_user.approved? },
+            message: 'Your login is currently pending approval',
+            status: 403
+          },
+          disabled: {
+            condition: -> { !current_user.functional? },
+            message: 'Your login is currently disabled',
+            status: 403
+          }
+        }
+
+        error = errors.values.find { |e| e[:condition].call }
+        render json: { error: error[:message] }, status: error[:status]
       end
     end
   end
